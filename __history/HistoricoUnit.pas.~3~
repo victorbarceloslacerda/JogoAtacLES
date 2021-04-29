@@ -1,0 +1,30 @@
+unit HistoricoUnit;
+
+interface
+
+type
+  Historico = Class
+  private
+  public
+    jogador: String;
+    data: String;
+    tempo: Integer;
+    pont_pre: Integer;
+    pont_pos: Integer;
+    constructor Historico();
+  end;
+
+implementation
+
+{ Historico }
+
+constructor Historico.Historico;
+begin
+  jogador := '';
+  data := '';
+  tempo := 0;
+  pont_pre := 0;
+  pont_pos := 0;
+end;
+
+end.

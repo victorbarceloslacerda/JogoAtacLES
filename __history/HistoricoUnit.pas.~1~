@@ -1,0 +1,13 @@
+unit HistoricoUnit;
+
+interface
+
+type
+  Historico = class
+  private
+  public
+  end;
+
+implementation
+
+end.

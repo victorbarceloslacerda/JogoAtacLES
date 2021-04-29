@@ -1,0 +1,132 @@
+unit JanelinhaUnit;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.Imaging.pngimage,
+  Vcl.ExtCtrls,
+  ConstantesUnit, FaseUnit, ArquivosUnit;
+
+type
+  TForm2 = class(TForm)
+    bot_manual: TButton;
+    bot_historia: TButton;
+    bot_pontos: TButton;
+    dados: TMemo;
+    nuttyvision: TImage;
+    txt_apresenta: TLabel;
+    procedure FormShow(Sender: TObject);
+    procedure bot_manualClick(Sender: TObject);
+    procedure bot_historiaClick(Sender: TObject);
+    procedure bot_pontosClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+  private
+    estado: Integer;
+    dados_fase: Fase;
+    pode_historiar: Boolean;
+    procedure tratar_historia(dados_fase: Fase);
+    procedure mudar_quadro;
+    { Private declarations }
+  public
+    procedure informar_fase(dados: Fase);
+    { Public declarations }
+  end;
+
+const
+  // Estados da janela de visualização de dados
+  ESTADO_MANUAL = 1;
+  ESTADO_HISTORIA = 2;
+  ESTADO_PONTUACOES = 3;
+
+var
+  Form2: TForm2;
+
+implementation
+
+{$R *.dfm}
+
+// Utilidade que recebe os dados da fase passados da janela principal
+procedure TForm2.informar_fase(dados: Fase);
+begin
+  // Receba os dados da fase
+  dados_fase := dados;
+  // Se o modo da janela for o de história
+  if(estado = ESTADO_HISTORIA) then
+  begin
+    // Mostre as informações
+    pode_historiar := True;
+    mudar_quadro();
+  end;
+end;
+
+// Função que muda os dados apresentados de acordo com o estado assumido pela janela
+procedure TForm2.mudar_quadro();
+begin
+  dados.Clear();
+  case estado of
+    ESTADO_MANUAL    : dados.Lines.LoadFromFile(CAMINHO_RECURSOS + ARQ_MANUAL);
+    ESTADO_HISTORIA  : if(pode_historiar = True) then tratar_historia(dados_fase);
+    ESTADO_PONTUACOES: if(FileExists(ARQ_PONTUACOES) = True) then dados.Lines.LoadFromFile(ARQ_PONTUACOES) else escrever_no_arquivo(ARQ_PONTUACOES, 'PONTUAÇÕES' + CRLF + '==========================' + CRLF);
+  end;
+end;
+
+// Muda os dados para mostrar a história da fase
+procedure TForm2.bot_historiaClick(Sender: TObject);
+begin
+  estado := ESTADO_HISTORIA;
+  mudar_quadro();
+end;
+
+// Muda os dados para mostrar o manual do jogo
+procedure TForm2.bot_manualClick(Sender: TObject);
+begin
+  estado := ESTADO_MANUAL;
+  mudar_quadro();
+end;
+
+// Muda os dados para mostrar as pontuações do jogo
+procedure TForm2.bot_pontosClick(Sender: TObject);
+begin
+  estado := ESTADO_PONTUACOES;
+  mudar_quadro();
+end;
+
+// Utilidade que prepara a janela quando é aberta
+procedure TForm2.FormShow(Sender: TObject);
+begin
+  mudar_quadro();
+end;
+
+// Compila os dados da fase para que sejam mostrados na tela de história
+procedure TForm2.tratar_historia(dados_fase: Fase);
+begin
+  dados.Lines.Add('HISTÓRIA');
+  dados.Lines.Add('============================');
+  dados.Lines.Add(dados_fase.historia);
+  dados.Lines.Add('============================');
+  dados.Lines.Add('ORIENTAÇÕES');
+  if(dados_fase.origem_cima = True) then
+    dados.Lines.Add('>> Os inimigos podem vir pela frente.');
+  if(dados_fase.origem_baixo = True) then
+    dados.Lines.Add('>> Os inimigos podem vir por trás.');
+  if(dados_fase.origem_esquerda = True) then
+    dados.Lines.Add('>> Os inimigos podem vir pela esquerda.');
+  if(dados_fase.origem_direita = True) then
+    dados.Lines.Add('>> Os inimigos podem vir pela direita.');
+  if((dados_fase.origem_esquerda = True) or (dados_fase.origem_direita = True)) then
+    dados.Lines.Add('>> Inimigos que vêm da direita ou esquerda podem atirar!');
+  dados.Lines.Add('============================');
+  dados.Lines.Add('Música da fase: ' + dados_fase.caminho_musica);
+end;
+
+// Configura a janela quando a mesma é criada
+procedure TForm2.FormCreate(Sender: TObject);
+begin
+  DoubleBuffered := True;
+  pode_historiar := False;
+  estado := ESTADO_HISTORIA;
+  mudar_quadro();
+end;
+
+end.

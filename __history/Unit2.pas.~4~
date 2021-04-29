@@ -1,0 +1,63 @@
+unit Unit2;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.Imaging.pngimage,
+  Vcl.ExtCtrls, Unit1;
+
+type
+  TForm2 = class(TForm)
+    bot_manual: TButton;
+    bot_historia: TButton;
+    bot_pontos: TButton;
+    dados: TMemo;
+    nuttyvision: TImage;
+    txt_apresenta: TLabel;
+    dados_fase: Fase;
+    procedure FormCreate(Sender: TObject);
+  private
+    procedure tratar_historia(dados_fase: Fase);
+    { Private declarations }
+  public
+    constructor Create(AOwner: TComponent; dados_da_fase: Fase);
+    { Public declarations }
+  end;
+
+const
+  ESTADO_MANUAL = 1;
+  ESTADO_HISTORIA = 2;
+  ESTADO_PONTUACOES = 3;
+
+var
+  Form2: TForm2;
+  estado: Integer;
+
+implementation
+
+{$R *.dfm}
+
+constructor TForm2.Create(AOwner: TComponent; dados_da_fase: Fase);
+begin
+  inherited Create(AOwner);
+  dados_fase := dados_da_fase;
+end;
+
+procedure TForm2.FormCreate(Sender: TObject);
+begin
+  case estado of
+    ESTADO_MANUAL    : dados.Lines.LoadFromFile('manual.txt');
+    ESTADO_HISTORIA  : tratar_historia(dados_fase);
+    ESTADO_PONTUACOES: dados.Lines.LoadFromFile('pontuacoes.txt');
+  end;
+end;
+
+procedure TForm2.tratar_historia(dados_fase: Fase);
+begin
+  if(dados_fase.origem_cima = True) then
+    dados.Add()
+
+end;
+
+end.

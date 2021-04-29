@@ -1,0 +1,91 @@
+unit RegPontuacao;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls;
+
+type
+  TForm3 = class(TForm)
+    bot_registrar: TButton;
+    bot_cancelar: TButton;
+    txt_titulo_pontuacao: TLabel;
+    txt_nome_jogador: TLabel;
+    pontuacao: TLabel;
+    nome_jogador: TEdit;
+    temporizador: TTimer;
+    procedure temporizadorTimer(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure bot_cancelarClick(Sender: TObject);
+    procedure bot_registrarClick(Sender: TObject);
+  private
+    pontos: Integer;
+    acompanhante: Integer;
+  public
+    procedure informar_pontuacao(valor: Integer);
+  end;
+
+const
+  ARQUIVO_PONTUACOES = 'pontuacoes.txt';
+
+var
+  Form3: TForm3;
+
+implementation
+
+{$R *.dfm}
+
+procedure TForm3.bot_cancelarClick(Sender: TObject);
+begin
+  Close();
+end;
+
+procedure TForm3.bot_registrarClick(Sender: TObject);
+var
+  arq: TextFile;
+  nome: String;
+begin
+  if(FileExists(ARQUIVO_PONTUACOES) = False) then
+  begin
+    AssignFile(arq, ARQUIVO_PONTUACOES);
+    Rewrite(arq);
+    WriteLn(arq, 'PONTUAÇÕES');
+    WriteLn(arq, '=================================');
+    CloseFile(arq);
+  end;
+  if(Length(nome_jogador.Text) > 0) then
+    nome := nome_jogador.Text
+  else
+    nome := 'Jogador Desconhecido';
+  AssignFile(arq, ARQUIVO_PONTUACOES);
+  Append(arq);
+  WriteLn(arq, nome_jogador.Text + ': ' + IntToStr(pontos) + ' pontos.');
+  CloseFile(arq);
+end;
+
+procedure TForm3.FormShow(Sender: TObject);
+begin
+  DoubleBuffered := True;
+  acompanhante := 0;
+  nome_jogador.Text := '';
+end;
+
+procedure TForm3.informar_pontuacao(valor: Integer);
+begin
+  pontos := valor;
+  temporizador.Enabled := True;
+end;
+
+procedure TForm3.temporizadorTimer(Sender: TObject);
+begin
+  acompanhante := acompanhante + 10;
+  if(acompanhante > pontos) then
+  begin
+    acompanhante := pontos;
+    temporizador.Enabled := False;
+  pontuacao.Caption := IntToStr(acompanhante);
+
+end;
+
+end.

@@ -1,0 +1,55 @@
+unit ArquivosUnit;
+
+interface
+
+uses
+  SysUtils;
+
+function ler_do_arquivo(nome_arquivo: String): String;
+procedure escrever_no_arquivo(nome_arquivo, conteudo: String; adicionar: Boolean);
+
+implementation
+
+function ler_do_arquivo(nome_arquivo: String): String;
+var
+  arq: TextFile;
+  leitura: String;
+begin
+  Result := '';
+  if(FileExists(nome_arquivo) = True) then
+  begin
+    AssignFile(arq, nome_arquivo);
+    Reset(arq);
+    while(Eof(arq) = False) do
+    begin
+      Readln(arq, leitura);
+      Result := Concat(Result, leitura);
+    end;
+    CloseFile(arq);
+  end;
+end;
+
+procedure escrever_no_arquivo(nome_arquivo, conteudo: String; adicionar: Boolean);
+var
+  arq: TextFile;
+begin
+  if(FileExists(nome_arquivo) = True) then
+  begin
+    AssignFile(arq, nome_arquivo);
+    if(adicionar = True) then
+      Append(arq)
+    else
+      Rewrite(arq);
+    Writeln(arq, conteudo);
+    CloseFile(arq);
+  end
+  else
+  begin
+    AssignFile(arq, nome_arquivo);
+    Rewrite(arq);
+    Writeln(arq, conteudo);
+    CloseFile(arq);
+  end;
+end;
+
+end.

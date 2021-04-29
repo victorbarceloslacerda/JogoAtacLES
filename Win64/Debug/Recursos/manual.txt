@@ -1,0 +1,36 @@
+MANUAL
+====================================
+O Planeta Nadaver está sob ataque
+de aliens e conseguiu reunir
+forças de ataque espacial para
+se defender.
+Você está nestas forças espaciais
+e deverá destruir os aliens
+e voltar para casa.
+
+CONTROLES:
+W - Mover para cima
+S - Mover para baixo
+A - Mover para esquerda
+D - Mover para direita
+Espaço - Atirar
+P - Pausar
+
+DICAS:
+Aliens podem vir das quatro
+direções.
+Alguns aliens podem vir empilhados.
+Se o indicador de vida chegar a
+zero, o jogo termina.
+Se o indicador de energia chegar
+ao fim, o jogador perde uma vida.
+Se o jogador colidir com um alien,
+ele perde uma vida.
+Ao início de cada fase a energia
+é recuperada.
+Destruição de alies conta pontos.
+Energia que sobra ao fim da missão
+rende pontos extras.
+Da quarta fase em diante, o
+movimento vertical é desbloqueado.
+

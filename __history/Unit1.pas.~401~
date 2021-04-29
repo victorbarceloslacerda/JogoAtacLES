@@ -1,0 +1,624 @@
+unit Unit1;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, Vcl.Imaging.pngimage,
+  Vcl.StdCtrls, Vcl.MPlayer,
+  ConstantesUnit, FaseUnit, AlienUnit, JanelinhaUnit;
+
+type
+  TForm1 = class(TForm)
+    nuttyvision: TImage;
+    painel: TPanel;
+    nave: TImage;
+    processamento: TTimer;
+    tiro: TPanel;
+    pontuacao: TLabel;
+    energia: TLabel;
+    fundo1: TImage;
+    fundo2: TImage;
+    icone_vida: TImage;
+    visor_vidas: TLabel;
+    tocador: TMediaPlayer;
+    sons: TMediaPlayer;
+    ctrl_tocador: TTimer;
+    hitbox: TPanel;
+    barreira: TPanel;
+    procedure FormKeyPress(Sender: TObject; var Key: Char);
+    procedure FormCreate(Sender: TObject);
+    procedure processamentoTimer(Sender: TObject);
+    procedure ctrl_tocadorTimer(Sender: TObject);
+  private
+    function criar_alien: Alien;
+    procedure atirar;
+    procedure tratar_tiro_jogador;
+    procedure tratar_colisoes;
+    function deu_colisao(a, b: TComponent): Boolean;
+    function testar_colisao(a, b: TControl): Boolean;
+    procedure mover_fundo;
+    procedure mover_inimigos;
+    procedure atualizar_pontos;
+    procedure atualizar_energia;
+    procedure atualizar_vidas;
+    function icone_alien_por_fase: String;
+    procedure morrer;
+    procedure limpar_inimigos;
+    procedure preparar_fase;
+    procedure definir_posicoes_do_alien(var alvo: Alien);
+    procedure configurar_fases_pre_programadas;
+    procedure configurar_variaveis_de_controle;
+    procedure avancar_fase;
+    procedure tocar_musica(arquivo: String);
+    procedure tocar_som(arquivo: String);
+    procedure tratar_tiros_inimigos;
+    function escolher_alien_aleatorio(): Alien;
+    function contar_tiros_inimigos: Integer;
+    procedure mover_tiros_inimigos;
+    procedure escrever(mensagem: String);
+    procedure mover_nave(x, y: Integer);
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  // Formulário
+  Form1: TForm1;
+  // Variáveis de controle
+  pausa: Boolean;
+  movimento_fundo: Integer;
+  movimento: Integer;
+  tiro_lancado: Boolean;
+  limite_tiros_inimigos: Integer;
+  n_fase: Integer;
+  cont_aliens: Integer;
+  pontos: Integer;
+  energia_max: Integer;
+  cont_energia: Integer;
+  vidas: Integer;
+  invencivel: Boolean;
+  // Fases pré-programadas
+  fase01: Fase;
+  fase02: Fase;
+  fase03: Fase;
+  // Fase sendo executada
+  fase_atual: Fase;
+
+implementation
+
+{$R *.dfm}
+
+uses Unit2;
+
+procedure depurar(ponto: Integer);
+begin
+  ShowMessage('Ponto: ' + IntToStr(ponto));
+end;
+
+procedure TForm1.FormCreate(Sender: TObject);
+begin
+  // Previnindo a piscagem das imagens
+  DoubleBuffered := True;
+  // Configurando o intervalo de processamento do jogo
+  processamento.Interval := INTERVALO_PROCESSAMENTO_MS;
+  // Inicializando variáveis de controle
+  configurar_variaveis_de_controle();
+  // Configuração de fases pré-programadas
+  configurar_fases_pre_programadas();
+  // Inicializar visores
+  atualizar_pontos();
+  atualizar_vidas();
+  atualizar_energia();
+  // Ativar temporizador de processamento do jogo
+  processamento.Enabled := True;
+end;
+
+procedure TForm1.configurar_variaveis_de_controle();
+begin
+  pausa := True;
+  movimento_fundo := 1;
+  movimento := 8;
+  tiro_lancado := False;
+  limite_tiros_inimigos := 0;
+  n_fase := 0;
+  cont_aliens := 0;
+  pontos := 0;
+  energia_max := 100;
+  cont_energia := energia_max;
+  vidas := 3;
+  invencivel := False;
+end;
+
+procedure TForm1.configurar_fases_pre_programadas();
+begin
+  fase01 := Fase.Create;
+  fase01.origem_cima := True;
+  fase01.origem_baixo := False;
+  fase01.origem_esquerda := False;
+  fase01.origem_direita := False;
+  fase01.caminho_musica := 'Waterflame - Electroman Adventures.mp3';
+  fase01.historia := 'COMUNICADO: TU PILOTO DEFESA PLANETA NADAVER ESQUADRAO ABATIDO VOCE ULTIMA ESPERANCA BATALHA';
+
+  fase02 := Fase.Create;
+  fase02.origem_cima := False;
+  fase02.origem_baixo := False;
+  fase02.origem_esquerda := True;
+  fase02.origem_direita := True;
+  fase02.caminho_musica := 'Kitsune2 - Never Want to Be a Hero.mp3';
+  fase02.historia := 'COMUNICADO: ALIENS PASSARAM ONDA + FORTE CUIDADO DEFESAS SE VIRAM AQUI FOCO FOCO FOCO';
+
+  fase03 := Fase.Create;
+  fase03.origem_cima := True;
+  fase03.origem_baixo := False;
+  fase03.origem_esquerda := True;
+  fase03.origem_direita := True;
+  fase03.caminho_musica := 'TomboFry - Grayscale.mp3';
+  fase03.historia := 'COMUNICADO: NADAVER VENCER BATALHA MUITAS PERDAS NAO DEIXAR ULTIMA ONDA PASSAR!';
+end;
+
+function TForm1.icone_alien_por_fase(): String;
+begin
+  if(n_fase = 1) then
+    Result := 'alien1.png';
+  if(n_fase = 2) then
+    Result := 'alien2.png';
+  if(n_fase > 2) then
+    Result := 'alien3.png';
+end;
+
+procedure TForm1.escrever(mensagem: String);
+var
+  arq: TextFile;
+begin
+  AssignFile(arq, 'registro.txt');
+  Append(arq);
+  WriteLn(arq, mensagem);
+  CloseFile(arq);
+end;
+
+function TForm1.criar_alien(): Alien;
+var
+  temp_alien: Alien;
+begin
+  temp_alien := Alien.Create(Form1);
+  temp_alien.Parent := Form1;
+  temp_alien.Width := TAMANHO_SPRITE;
+  temp_alien.Height := TAMANHO_SPRITE;
+  temp_alien.Left := Form1.Width - temp_alien.Width;
+  temp_alien.Top := 0;
+  temp_alien.Tag := ID_INIMIGO;
+  temp_alien.Picture.LoadFromFile(CAMINHO_RECURSOS + icone_alien_por_fase());
+  temp_alien.espera_pre_entrada := (1000 Div INTERVALO_PROCESSAMENTO_MS) * (Random(10) + 1);
+  temp_alien.espera_pre_entrada_mod := temp_alien.espera_pre_entrada;
+  temp_alien.ja_atirou := True;
+  Result := temp_alien;
+end;
+
+procedure TForm1.ctrl_tocadorTimer(Sender: TObject);
+begin
+  tocador.Play();
+end;
+
+procedure TForm1.tocar_som(arquivo: String);
+begin
+  sons.FileName := arquivo;
+  sons.Open();
+  sons.Play();
+end;
+
+procedure TForm1.FormKeyPress(Sender: TObject; var Key: Char);
+begin
+  if(Key = 'p') then
+  begin
+    pausa := not pausa;
+  end;
+  if(pausa = False) then
+  begin
+    if(n_fase > 3) then
+    begin
+      if(Key = 'w') then
+      begin
+        if((nave.Top - movimento) > (0 + 48)) then mover_nave(nave.Left, nave.Top - movimento);
+      end;
+      if(Key = 's') then
+      begin
+        if((nave.Top + movimento) < (335 - nave.Height)) then mover_nave(nave.Left, nave.Top + movimento);
+      end;
+    end;
+    if(Key = 'a') then
+    begin
+      if(nave.Left > 0) then mover_nave(nave.Left - movimento, nave.Top);
+    end;
+    if(Key = 'd') then
+    begin
+      if(nave.Left < (640 - nave.Width)) then mover_nave(nave.Left + movimento, nave.Top);
+    end;
+    if(Key = ' ') then
+    begin
+      atirar();
+    end;
+    if(Key = 'm') then
+    begin
+      Inc(n_fase);
+    end;
+    if(Key = 'n') then
+    begin
+      barreira.Visible := not barreira.Visible;
+    end;
+  end;
+end;
+
+procedure TForm1.atirar();
+begin
+  if(tiro_lancado = False) then
+  begin
+    tiro_lancado := True;
+    tocar_som(CAMINHO_RECURSOS + 'Tiro.mp3');
+    tiro.Left := (nave.Left + (nave.Width div 2));
+    tiro.Top := nave.Top;
+    tiro.Visible := True;
+  end;
+end;
+
+procedure TForm1.tratar_tiro_jogador();
+begin
+  if(tiro_lancado = True) then
+  begin
+    tiro.Top := tiro.Top - movimento;
+    Tiro.Left := (nave.Left + (nave.Width div 2));
+    if(tiro.Top < -(tiro.Height)) then
+    begin
+      tiro_lancado := False;
+      tiro.Visible := False;
+    end;
+  end;
+end;
+
+function TForm1.escolher_alien_aleatorio(): Alien;
+var
+  indice: Integer;
+  cont: Integer;
+begin
+  indice := Random(FATOR_N_ALIENS * n_fase) + 1;
+  cont := 0;
+  while(indice > 0) do
+  begin
+    while(cont < ComponentCount) do
+    begin
+      if(components[cont].Tag = ID_INIMIGO) then
+        Dec(indice);
+      if(indice = 0) then
+      begin
+        Result := components[cont] As Alien;
+        break;
+      end;
+      Inc(cont);
+    end;
+    cont := 0;
+  end;
+end;
+
+function TForm1.contar_tiros_inimigos(): Integer;
+var
+  cont: Integer;
+begin
+  cont := 0;
+  Result := 0;
+  while(cont < ComponentCount) do
+  begin
+    if(components[cont].Tag = ID_TIRO_INIMIGO) then
+      Inc(Result);
+    Inc(cont);
+  end;
+end;
+
+procedure TForm1.mover_tiros_inimigos();
+var
+  cont: Integer;
+  temp_tiro: TControl;
+begin
+  cont := 0;
+  while(cont < ComponentCount) do
+  begin
+    if(components[cont].Tag = ID_TIRO_INIMIGO) then
+    begin
+      temp_tiro := components[cont] As TControl;
+      temp_tiro.Top := temp_tiro.Top + movimento + (movimento Div 3);
+      if(temp_tiro.Top > temp_tiro.Parent.Height) then
+        temp_tiro.Free();
+    end;
+    Inc(cont);
+  end;
+end;
+
+procedure TForm1.tratar_tiros_inimigos();
+var
+  temp_alien: Alien;
+begin
+  if(cont_aliens > 0) then
+  begin
+    temp_alien := escolher_alien_aleatorio();
+    if(contar_tiros_inimigos() < limite_tiros_inimigos) then
+      temp_alien.atirar();
+  end;
+  mover_tiros_inimigos();
+end;
+
+procedure TForm1.mover_nave(x, y: Integer);
+begin
+  nave.Left := x;
+  nave.Top := y;
+  hitbox.Left := nave.Left + ((nave.Width Div 2) - (hitbox.Width) Div 2);
+  hitbox.Top := nave.Top;
+end;
+
+procedure TForm1.morrer();
+begin
+  invencivel := True;
+  Dec(vidas);
+  tocar_som(CAMINHO_RECURSOS + 'Explosao.mp3');
+  cont_energia := energia_max;
+  mover_nave(296, 290);
+  atualizar_vidas();
+  atualizar_energia();
+  limpar_inimigos();
+  invencivel := False;
+end;
+
+procedure TForm1.limpar_inimigos();
+var
+  cont: Integer;
+  temp_alien: Alien;
+begin
+  cont := 0;
+  while(cont < ComponentCount) do
+  begin
+    if(components[cont].Tag = ID_TIRO_INIMIGO) then
+    begin
+      components[cont].Free;
+      cont := 0;
+    end;
+    if(components[cont].Tag = ID_INIMIGO) then
+    begin
+      temp_alien := components[cont] as Alien;
+      temp_alien.voltar_pra_origem();
+      temp_alien.espera_pre_entrada_mod := temp_alien.espera_pre_entrada;
+    end;
+    Inc(cont);
+  end;
+end;
+
+procedure TForm1.tratar_colisoes();
+var
+  cont1: Integer;
+  cont2: Integer;
+begin
+  cont1 := 0;
+  cont2 := 0;
+  // Percorrer componentes (achar jogador ou tiro)
+  while(cont1 < ComponentCount) do
+  begin
+    // Achar jogador ou tiro
+    if((components[cont1].Tag = ID_JOGADOR) or (components[cont1].Tag = ID_TIRO_JOGADOR)) then
+    begin
+      // Percorrer componentes (achar inimigos ou seus tiros)
+      while(cont2 < ComponentCount) do
+      begin
+        // Achar inimigos ou seus tiros
+        if((components[cont2].Tag = ID_INIMIGO) or (components[cont2].Tag = ID_TIRO_INIMIGO)) then
+        begin
+          // Verifica colisão
+          if(deu_colisao(components[cont1], components[cont2]) = True) then
+          begin
+            // Jogador envolvido
+            if((components[cont1].Tag = ID_JOGADOR) and (invencivel = False)) then
+            begin
+              morrer();
+            end;
+            // Tiro do jogador envolvido
+            if((components[cont1].Tag = ID_TIRO_JOGADOR) and ((components[cont1] As TControl).Visible = True)) then
+            begin
+              Inc(pontos, 100);
+              atualizar_pontos();
+              tocar_som(CAMINHO_RECURSOS + 'Explosao.mp3');
+              if(components[cont2].Tag = ID_INIMIGO) then
+                Dec(cont_aliens);
+              components[cont2].Free();
+              if(components[cont1].Name = 'tiro') then
+              begin
+                tiro.Visible := False;
+                tiro.Top := 0;
+              end;
+            end;
+          end;
+        end;
+        Inc(cont2);
+      end;
+    end;
+    Inc(cont1);
+    cont2 := 0;
+  end;
+end;
+
+function TForm1.deu_colisao(a, b: TComponent): Boolean;
+var
+  ac, bc: TControl;
+begin
+  ac := a As TControl;
+  bc := b As TControl;
+  Result := (testar_colisao(ac, bc) or testar_colisao(bc, ac));
+end;
+
+function TForm1.testar_colisao(a, b: TControl): Boolean;
+begin
+  if((a.Left < (b.Left + b.Width)) and ((a.Left + a.Width) > b.Left) and (a.Top < (b.Top + b.Height)) and ((a.Top + a.Height) > b.Top)) then
+    Result := True
+  else
+    Result := False;
+end;
+
+procedure TForm1.mover_fundo();
+begin
+  fundo1.Top := fundo1.Top + ((movimento Div 2) * (n_fase + 1));
+  fundo2.Top := fundo2.Top + ((movimento Div 2) * (n_fase + 1));
+  if(fundo1.Top > fundo1.Height) then
+    fundo1.Top := -fundo1.Height;
+  if(fundo2.Top > fundo2.Height) then
+    fundo2.Top := -fundo2.Height;
+end;
+
+procedure TForm1.mover_inimigos();
+var
+  cont: Integer;
+  temp_alien: Alien;
+begin
+  cont := 0;
+  while(cont < ComponentCount) do
+  begin
+    if(components[cont].Tag = ID_INIMIGO) then
+    begin
+      temp_alien := (components[cont] As Alien);
+      temp_alien.mover();
+    end;
+    Inc(cont);
+  end;
+end;
+
+procedure TForm1.atualizar_pontos();
+begin
+  pontuacao.Caption := 'Pontos: ' + IntToStr(pontos);
+end;
+
+procedure TForm1.atualizar_energia();
+var
+  cont: Integer;
+  caracteres: Integer;
+  limite: Integer;
+begin
+  cont := 0;
+  caracteres := (cont_energia * 100) Div energia_max;
+  limite := 100 Div 3;
+  caracteres := caracteres Div 3;
+  energia.Caption := 'Energia: ';
+  while(cont < caracteres) do
+  begin
+    energia.Caption := energia.Caption + '#';
+    Inc(cont);
+  end;
+  while(cont < limite) do
+  begin
+    energia.Caption := energia.Caption + '-';
+    Inc(cont);
+  end;
+  if(cont_energia <= 0) then
+    morrer();
+end;
+
+procedure TForm1.atualizar_vidas();
+begin
+  visor_vidas.Caption := 'x' + IntToStr(vidas);
+end;
+
+procedure TForm1.definir_posicoes_do_alien(var alvo: Alien);
+var
+  zona: Integer;
+  achado: Boolean;
+begin
+  zona := 0;
+  achado := False;
+  while(achado = False) do
+  begin
+    zona := Random(4) + 1;
+    case zona of
+      ZONA_CIMA    : achado := fase_atual.origem_cima;
+      ZONA_BAIXO   : achado := fase_atual.origem_baixo;
+      ZONA_ESQUERDA: achado := fase_atual.origem_esquerda;
+      ZONA_DIREITA : achado := fase_atual.origem_direita;
+    end;
+  end;
+  case zona of
+    ZONA_CIMA    : alvo.atualizar_coordenadas((Random(576) + TAMANHO_SPRITE), -(TAMANHO_SPRITE), 0, (movimento Div 2));
+    ZONA_BAIXO   : alvo.atualizar_coordenadas((Random(576) + TAMANHO_SPRITE), (480 + TAMANHO_SPRITE), 0, -(movimento Div 2));
+    ZONA_ESQUERDA: alvo.atualizar_coordenadas(-(TAMANHO_SPRITE), (Random(216) + TAMANHO_SPRITE), (movimento Div 2), 0);
+    ZONA_DIREITA : alvo.atualizar_coordenadas((640 + TAMANHO_SPRITE), (Random(216) + TAMANHO_SPRITE), -(movimento Div 2), 0);
+  end;
+end;
+
+procedure TForm1.preparar_fase();
+var
+  cont: Integer;
+  temp_alien: Alien;
+begin
+  cont := 0;
+  while(cont < cont_aliens) do
+  begin
+    temp_alien := criar_alien();
+    definir_posicoes_do_alien(temp_alien);
+    temp_alien.voltar_pra_origem();
+    Inc(cont);
+  end;
+  cont_energia := energia_max;
+end;
+
+procedure TForm1.tocar_musica(arquivo: String);
+begin
+  tocador.FileName := arquivo;
+  tocador.Open();
+  tocador.TimeFormat := tfMilliseconds;
+  ctrl_tocador.Interval := tocador.Length + 100;
+  tocador.Play();
+  ctrl_tocador.Enabled := True;
+end;
+
+procedure TForm1.avancar_fase();
+begin
+  Inc(n_fase);
+  cont_aliens := (n_fase * FATOR_N_ALIENS);
+  case n_fase of
+    1: fase_atual := fase01;
+    2: fase_atual := fase02;
+    3: fase_atual := fase03;
+  else
+    fase_atual.origem_cima := True;
+    fase_atual.origem_baixo := True;
+    fase_atual.origem_esquerda := True;
+    fase_atual.origem_direita := True;
+    fase_atual.caminho_musica := 'Triac - Eat Your Bricks.mp3';
+    fase_atual.historia := 'COMUNICADO: Você venceu a guerra, agora retorne para casa são e salvo.';
+  end;
+  preparar_fase();
+  energia_max := (1000 Div INTERVALO_PROCESSAMENTO_MS) * 60 * (n_fase + 1);
+  cont_energia := energia_max;
+  limite_tiros_inimigos := (FATOR_N_ALIENS * n_fase) Div 5;
+  tocar_musica(CAMINHO_RECURSOS + fase_atual.caminho_musica);
+  Sleep(1000);
+end;
+
+procedure TForm1.processamentoTimer(Sender: TObject);
+begin
+  if(pausa = False) then
+  begin
+    pausa := True;
+    tratar_colisoes();
+    mover_fundo();
+    mover_inimigos();
+    tratar_tiro_jogador();
+    tratar_tiros_inimigos();
+    Dec(cont_energia);
+    atualizar_energia();
+    pausa := False;
+  end;
+  if(cont_aliens <= 0) then
+  begin
+    processamento.Enabled := False;
+    if(n_fase > 0) then
+      Inc(pontos, (cont_energia Div 10));
+    avancar_fase();
+    processamento.Enabled := True;
+    pausa := False;
+  end;
+end;
+
+end.

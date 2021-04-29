@@ -1,0 +1,137 @@
+unit RegPontuacaoUnit;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.MPlayer,
+  ConstantesUnit, HistoricoUnit, ArquivosUnit;
+
+type
+  TForm3 = class(TForm)
+    bot_registrar: TButton;
+    bot_cancelar: TButton;
+    txt_titulo_pontuacao: TLabel;
+    txt_nome_jogador: TLabel;
+    pontuacao: TLabel;
+    nome_jogador: TEdit;
+    temporizador: TTimer;
+    som: TMediaPlayer;
+    t_som: TTimer;
+    txt_pont_parcial: TLabel;
+    pont_prepos: TLabel;
+    data_tempo: TLabel;
+    procedure temporizadorTimer(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure bot_cancelarClick(Sender: TObject);
+    procedure bot_registrarClick(Sender: TObject);
+    procedure t_somTimer(Sender: TObject);
+  private
+    hist: Historico;
+    pontos: Integer;
+    acompanhante: Integer;
+    procedure tocar_som;
+    procedure parar_som;
+    procedure formatar_dados;
+  public
+    procedure informar_historico(hist1: Historico);
+  end;
+
+var
+  Form3: TForm3;
+  tocando: Boolean;
+  hist: Historico;
+
+implementation
+
+{$R *.dfm}
+
+// Fecha a janela de pontuação e o jogo
+procedure TForm3.bot_cancelarClick(Sender: TObject);
+begin
+  Close();
+end;
+
+// Registra o histórico do jogador no arquivo de pontuações
+procedure TForm3.bot_registrarClick(Sender: TObject);
+var
+  conteudo, nome: String;
+begin
+  if(FileExists(ARQ_PONTUACOES) = False) then
+  begin
+    escrever_no_arquivo(ARQ_PONTUACOES, CABECALHO_ARQ_PONT, False);
+  end;
+  if(Length(nome_jogador.Text) > 1) then
+    nome := nome_jogador.Text
+  else
+    nome := 'Jogador Desconhecido';
+  escrever_no_arquivo(ARQ_PONTUACOES, nome + ':', True);
+  escrever_no_arquivo(ARQ_PONTUACOES, '>>>>' + IntToStr(pontos) + ' pontos.', True);
+  escrever_no_arquivo(ARQ_PONTUACOES, '>>>>' + IntToStr(hist.pont_pre) + ' pontos antes da terceira fase.', True);
+  escrever_no_arquivo(ARQ_PONTUACOES, '>>>>' + IntToStr(hist.pont_pos) + ' pontos depois da terceira fase.', True);
+  escrever_no_arquivo(ARQ_PONTUACOES, '>>>>' + 'Data do jogo: ' + hist.data, True);
+  escrever_no_arquivo(ARQ_PONTUACOES, '>>>>' + 'Tempo de jogo: ' + IntToStr(hist.tempo) + ' segundos', True);
+  Close();
+end;
+
+procedure TForm3.FormShow(Sender: TObject);
+begin
+  DoubleBuffered := True;
+  acompanhante := 0;
+  nome_jogador.Text := '';
+end;
+
+procedure TForm3.formatar_dados();
+begin
+  data_tempo.Caption := 'Data: ' + hist.data + ' | Tempo de jogo: ' + IntToStr(hist.tempo) + ' segundos';
+  pont_prepos.Caption := IntToStr(hist.pont_pre) + ' / ' + IntToStr(hist.pont_pos);
+  pontos := hist.pont_pre + hist.pont_pos;
+end;
+
+procedure TForm3.informar_historico(hist1: Historico);
+begin
+  hist := hist1;
+  formatar_dados();
+  temporizador.Enabled := True;
+end;
+
+procedure TForm3.tocar_som();
+begin
+  if(tocando = False) then
+  begin
+    tocando := True;
+    som.FileName := CAMINHO_RECURSOS + 'Contagem.mp3';
+    som.Open();
+    som.TimeFormat := tfMilliseconds;
+    t_som.Interval := som.Length + 50;
+    t_som.Enabled := True;
+    som.Play();
+  end;
+end;
+
+procedure TForm3.t_somTimer(Sender: TObject);
+begin
+  som.Play();
+end;
+
+procedure TForm3.parar_som();
+begin
+  t_som.Enabled := False;
+  som.Stop;
+  tocando := False;
+end;
+
+procedure TForm3.temporizadorTimer(Sender: TObject);
+begin
+  tocar_som();
+  acompanhante := acompanhante + (Random(100) + 10);
+  if(acompanhante > pontos) then
+  begin
+    acompanhante := pontos;
+    temporizador.Enabled := False;
+    parar_som();
+  end;
+  pontuacao.Caption := IntToStr(acompanhante);
+end;
+
+end.

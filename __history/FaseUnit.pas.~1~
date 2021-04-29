@@ -1,0 +1,19 @@
+unit FaseUnit;
+
+interface
+
+type
+  Fase = class
+  private
+  public
+    origem_cima: Boolean;
+    origem_baixo: Boolean;
+    origem_esquerda: Boolean;
+    origem_direita: Boolean;
+    caminho_musica: String;
+    historia: String;
+  end;
+
+implementation
+
+end.

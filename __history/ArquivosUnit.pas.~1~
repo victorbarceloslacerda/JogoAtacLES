@@ -1,0 +1,28 @@
+unit ArquivosUnit;
+
+interface
+
+uses
+  SysUtils;
+
+implementation
+
+function ler_arquivo(nome_arquivo: String): String;
+var
+  arq: TextFile;
+  leitura: String;
+begin
+  Result := '';
+  if(FileExists(nome_arquivo) = True) then
+  begin
+    AssignFile(arq, nome_arquivo);
+    Reset(arq);
+    while(Eof(arq) = False) do
+    begin
+      Readln(arq, leitura);
+      Concat(Result, leitura);
+    end;
+  end;
+end;
+
+end.

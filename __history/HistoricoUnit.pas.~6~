@@ -1,0 +1,17 @@
+unit HistoricoUnit;
+
+interface
+
+type
+  Historico = Class
+  private
+  public
+    data: String;
+    tempo: Integer;
+    pont_pre: Integer;
+    pont_pos: Integer;
+  end;
+
+implementation
+
+end.

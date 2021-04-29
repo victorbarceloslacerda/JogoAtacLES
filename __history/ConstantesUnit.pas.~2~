@@ -1,0 +1,21 @@
+unit ConstantesUnit;
+
+interface
+
+implementation
+
+const
+  ID_JOGADOR = 1;
+  ID_TIRO_JOGADOR = 2;
+  ID_INIMIGO = 3;
+  ID_TIRO_INIMIGO = 4;
+  TAMANHO_SPRITE = 32;
+  FATOR_N_ALIENS = 30;
+  ZONA_CIMA = 1;
+  ZONA_BAIXO = 2;
+  ZONA_ESQUERDA = 3;
+  ZONA_DIREITA = 4;
+  INTERVALO_PROCESSAMENTO_MS = 25;
+  CAMINHO_RECURSOS = '../../Recursos/';
+
+end.
